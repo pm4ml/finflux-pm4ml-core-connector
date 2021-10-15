@@ -60,50 +60,6 @@ public class TransfersRouter extends RouteBuilder {
                         "${header.X-CorrelationId}, " +
                         "'Request received POST /transfers', " +
                         "'Tracking the request', " +
-                        "'Track the response', " +
-                        //"'Call the " + PATH_NAME_POST + ",  Track the response', " +
-                        "'Input Payload: ${body}')") // default logger
-                /*
-                 * BEGIN processing
-                 */
-
-                .removeHeaders("Camel*")
-                /*
-                .marshal().json(JsonLibrary.Gson)
-                //.bean("postTransfersResponse")
-                .transform(datasonnet("resource:classpath:mappings/postTransfersResponse.ds"))
-                .setBody(simple("${body.content}"))
-                .marshal().json()
-
-                 */
-                /*
-                 * END processing
-                 */
-
-                .to("bean:customJsonMessage?method=logJsonMessage(" +
-                        "'info', " +
-                        "${header.X-CorrelationId}, " +
-                        "'Response for POST /transfers', " +
-                        "'Tracking the response', " +
-                        "null, " +
-                        "'Output Payload: ${body}')") // default logger
-                //.setBody(constant(null))
-                .removeHeaders("*", "X-*")
-                .doFinally().process(exchange -> {
-            ((Histogram.Timer) exchange.getProperty(TIMER_NAME_POST)).observeDuration(); // stop Prometheus Histogram metric
-        }).end()
-        ;
-
-        from("direct:putTransfersByTransferId").routeId("com.modusbox.putTransfers").doTry()
-                .process(exchange -> {
-                    reqCounterPut.inc(1); // increment Prometheus Counter metric
-                    exchange.setProperty(TIMER_NAME_PUT, reqLatencyPut.startTimer()); // initiate Prometheus Histogram metric
-                })
-                .to("bean:customJsonMessage?method=logJsonMessage(" +
-                        "'info', " +
-                        "${header.X-CorrelationId}, " +
-                        "'Request received PUT /transfers', " +
-                        "'Tracking the request', " +
                         "'Call the " + PATH_NAME_PUT + ",  Track the response', " +
                         "'Input Payload: ${body}')") // default logger
 
@@ -121,7 +77,7 @@ public class TransfersRouter extends RouteBuilder {
 
                 //.process(padLoanAccount)
 
-                .transform(datasonnet("resource:classpath:mappings/putTransfersRequest.ds"))
+                .transform(datasonnet("resource:classpath:mappings/postTransfersRequest.ds"))
 
                 .setProperty("fspId",simple("${body.content.get('fspId')}"))
                 .setBody(simple("${body.content}"))
@@ -146,7 +102,7 @@ public class TransfersRouter extends RouteBuilder {
                         "null, " +
                         "'Response from POST {{dfsp.host}}" + PATH + ", OUT Payload: ${body}')")
 
-                .transform(datasonnet("resource:classpath:mappings/putTransfersResponse.ds"))
+                .transform(datasonnet("resource:classpath:mappings/postTransfersResponse.ds"))
                 .setBody(simple("${body.content}"))
                 .marshal().json()
                 /*
@@ -155,10 +111,84 @@ public class TransfersRouter extends RouteBuilder {
                 .to("bean:customJsonMessage?method=logJsonMessage(" +
                         "'info', " +
                         "${header.X-CorrelationId}, " +
-                        "'Response for PUT /transfers', " +
+                        "'Response for POST /transfers', " +
                         "'Tracking the response', " +
                         "null, " +
                         "'Output Payload: empty')") // default logger
+                .removeHeaders("*", "X-*")
+
+                .doCatch(CCCustomException.class)
+                .to("direct:extractCustomErrors")
+                .doFinally().process(exchange -> {
+            ((Histogram.Timer) exchange.getProperty(TIMER_NAME_POST)).observeDuration(); // stop Prometheus Histogram metric
+        }).end()
+        ;
+
+        from("direct:putTransfersByTransferId").routeId("com.modusbox.putTransfers").doTry()
+                .process(exchange -> {
+                    reqCounterPut.inc(1); // increment Prometheus Counter metric
+                    exchange.setProperty(TIMER_NAME_PUT, reqLatencyPut.startTimer()); // initiate Prometheus Histogram metric
+                })
+                .to("bean:customJsonMessage?method=logJsonMessage(" +
+                        "'info', " +
+                        "${header.X-CorrelationId}, " +
+                        "'Request received PUT /transfers', " +
+                        "'Tracking the request', " +
+                        "'Call the PUT /Transfer,  Track the response', " +
+                        "'Input Payload: ${body}')") // default logger
+
+                /*
+                 * BEGIN processing
+                 */
+//                .to("direct:getAuthHeader")
+//                .removeHeaders("Camel*")
+//                .setHeader("Fineract-Platform-TenantId", constant("{{dfsp.tenant-id}}"))
+//                .setHeader("Content-Type", constant("application/json"))
+//                .setHeader(Exchange.HTTP_METHOD, constant("POST"))
+
+
+//                .marshal().json()
+
+                //.process(padLoanAccount)
+
+//                .transform(datasonnet("resource:classpath:mappings/putTransfersRequest.ds"))
+
+//                .setProperty("fspId",simple("${body.content.get('fspId')}"))
+//                .setBody(simple("${body.content}"))
+//                .marshal().json()
+//                .to("bean:customJsonMessage?method=logJsonMessage(" +
+//                        "'info', " +
+//                        "${header.X-CorrelationId}, " +
+//                        "'Calling the " + PATH_NAME_PUT + "', " +
+//                        "null, " +
+//                        "null, " +
+//                        "'Request to POST {{dfsp.host}}" + PATH2 + "${exchangeProperty.fspId}, IN Payload: ${body} IN Headers: ${headers}')")
+
+//                .toD("{{dfsp.host}}" + PATH2 + "${exchangeProperty.fspId}")
+
+//                .process(billsPaymentResponseValidator)
+
+//                .to("bean:customJsonMessage?method=logJsonMessage(" +
+//                        "'info', " +
+//                        "${header.X-CorrelationId}, " +
+//                        "'Called " + PATH_NAME_PUT + "', " +
+//                        "null, " +
+//                        "null, " +
+//                        "'Response from POST {{dfsp.host}}" + PATH + ", OUT Payload: ${body}')")
+
+//                .transform(datasonnet("resource:classpath:mappings/putTransfersResponse.ds"))
+//                .setBody(simple("${body.content}"))
+//                .marshal().json()
+                /*
+                 * END processing
+                 */
+//                .to("bean:customJsonMessage?method=logJsonMessage(" +
+//                        "'info', " +
+//                        "${header.X-CorrelationId}, " +
+//                        "'Response for PUT /transfers', " +
+//                        "'Tracking the response', " +
+//                        "null, " +
+//                        "'Output Payload: empty')") // default logger
                 .removeHeaders("*", "X-*")
 
                 .doCatch(CCCustomException.class)
