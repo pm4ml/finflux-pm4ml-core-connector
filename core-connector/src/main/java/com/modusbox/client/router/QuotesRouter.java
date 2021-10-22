@@ -1,6 +1,8 @@
 package com.modusbox.client.router;
 
+import com.modusbox.client.customexception.CCCustomException;
 import com.modusbox.client.exception.RouteExceptionHandlingConfigurer;
+import com.modusbox.client.validator.RoundingValidator;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import org.apache.camel.Exchange;
@@ -21,6 +23,7 @@ public class QuotesRouter extends RouteBuilder {
             .register();
 
     private final RouteExceptionHandlingConfigurer exceptionHandlingConfigurer = new RouteExceptionHandlingConfigurer();
+    private final RoundingValidator roundingValidator = new RoundingValidator();
 
     public void configure() {
 
@@ -42,6 +45,9 @@ public class QuotesRouter extends RouteBuilder {
                 /*
                  * BEGIN processing
                  */
+
+                .process(roundingValidator)
+
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
                 .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
 
@@ -62,6 +68,9 @@ public class QuotesRouter extends RouteBuilder {
                         "null, " +
                         "'Output Payload: ${body}')")
                 .removeHeaders("*", "X-*")
+                .doCatch(CCCustomException.class)
+                    .log("Exception Caught")
+                    .to("direct:extractCustomErrors")
                 .doFinally().process(exchange -> {
                     ((Histogram.Timer) exchange.getProperty(TIMER_NAME)).observeDuration(); // stop Prometheus Histogram metric
                 }).end()
