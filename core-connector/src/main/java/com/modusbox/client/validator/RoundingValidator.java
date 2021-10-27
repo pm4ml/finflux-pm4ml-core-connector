@@ -13,9 +13,9 @@ public class RoundingValidator implements Processor {
 
         QuoteRequest quoteRequest = exchange.getIn().getBody(QuoteRequest.class);
         String amount = quoteRequest.getAmount();
-        exchange.setProperty("amount", amount);
+//        exchange.setProperty("amount", amount);
 
-        float famount =  Float.parseFloat((String) exchange.getProperty("amount"));
+        float famount =  Float.parseFloat(amount);
         System.out.println("Amount in request body:"+famount);
         System.out.println("Constant Rounding Value:"+Constants.ROUNDING_VALUE);
 
