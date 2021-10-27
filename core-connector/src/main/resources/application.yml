@@ -34,7 +34,7 @@ camel:
 #  grant-type: type
 #  is-password-encrypted: false
 #  tenant-id: id
-
+#  roundingvalue: 50
 ### properties for Mojaloop Connector connection
 #ml-conn:
 #  outbound:
