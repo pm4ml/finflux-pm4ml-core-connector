@@ -17,8 +17,8 @@ public class RoundingValidator implements Processor {
 
         float famount =  Float.parseFloat(amount);
         System.out.println("Amount in request body:"+famount);
-        System.out.println("Constant Rounding Value:"+Constants.ROUNDING_VALUE);
-
+//        System.out.println("Constant Rounding Value:"+Constants.ROUNDING_VALUE);
+        System.out.println("Constant Rounding Value:"+exchange.getProperty("roundingvalue"));
         if ((famount % Constants.ROUNDING_VALUE) != 0) {
             throw new CCCustomException(ErrorCode.getErrorResponse(ErrorCode.GENERIC_ID_NOT_FOUND, "Amount is invalid. Please enter the amount in multiple of 50.(e.g. 50, 100, 150, 200, etc)"));
         }
