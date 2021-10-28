@@ -46,8 +46,6 @@ public class QuotesRouter extends RouteBuilder {
                  * BEGIN processing
                  */
                 .setProperty("roundingvalue", simple("{{dfsp.roundingvalue}}"))
-                .log("Check rounding value"+ simple("{{dfsp.roundingvalue}}"))
-                .log("Check rounding value"+ simple("{{dfsp.client-id}}"))
                 .process(roundingValidator)
 
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
