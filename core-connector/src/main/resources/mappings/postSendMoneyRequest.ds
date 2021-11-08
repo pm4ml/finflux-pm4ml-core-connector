@@ -1,0 +1,12 @@
+local mfiName = {"key": "mfiName", "value": cml.header("MFIName")};
+local newExtensionList = if std.objectHas(payload.from, "extensionList")
+then {"extensionList": [mfiName] + payload.from.extensionList}
+else {"extensionList": [mfiName]};
+
+// Recursively remove all "empty" members of payload.
+// "Empty" is defined as zero length `arrays`, zero length `objects`, or `null` values.
+local newFrom =  {"from": std.prune(payload.from + newExtensionList)};
+local newTo = {"to": std.prune(payload.to)};
+local newPayload = ds.remove(payload, ["to", "from"]);
+
+(newFrom + newTo) + newPayload
