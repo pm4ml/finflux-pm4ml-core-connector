@@ -12,7 +12,7 @@ public class PadLoanAccount implements Processor {
         if(idType.equalsIgnoreCase("ACCOUNT_ID")) {
             loanAccount = (String) exchange.getIn().getHeader("idValue");
             loanAccount = loanAccount.substring(3);
-            while(loanAccount.length() != 9) {
+            while(loanAccount.length() < 9) {
                 loanAccount = "0" + loanAccount;
             }
         }
