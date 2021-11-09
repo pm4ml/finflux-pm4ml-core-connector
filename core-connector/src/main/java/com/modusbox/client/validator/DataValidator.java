@@ -8,7 +8,7 @@ public class DataValidator {
     public void validateZeroAmount(String Amount) throws Exception {
         System.out.println("Amount in validateZeroAmount method:"+ Amount);
         if (Float.parseFloat(Amount) == 0) {
-            throw new CCCustomException(ErrorCode.getErrorResponse(ErrorCode.PAYEE_LIMIT_ERROR, "Invalid amount."));
+            throw new CCCustomException(ErrorCode.getErrorResponse(ErrorCode.PAYEE_LIMIT_ERROR, "Transfer amount cannot be zero value."));
         }
     }
     public void validateRounding(String Amount, String roundingValue) throws Exception{
