@@ -2,7 +2,7 @@ package com.modusbox.client.router;
 
 import com.modusbox.client.customexception.CCCustomException;
 import com.modusbox.client.exception.RouteExceptionHandlingConfigurer;
-import com.modusbox.client.validator.RoundingValidator;
+import com.modusbox.client.validator.DataValidator;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import org.apache.camel.Exchange;
@@ -23,7 +23,6 @@ public class QuotesRouter extends RouteBuilder {
             .register();
 
     private final RouteExceptionHandlingConfigurer exceptionHandlingConfigurer = new RouteExceptionHandlingConfigurer();
-    private final RoundingValidator roundingValidator = new RoundingValidator();
 
     public void configure() {
 
@@ -45,14 +44,14 @@ public class QuotesRouter extends RouteBuilder {
                 /*
                  * BEGIN processing
                  */
-                .setProperty("roundingvalue", simple("{{dfsp.roundingvalue}}"))
-                .process(roundingValidator)
 
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
                 .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
 
                 .marshal().json()
                 .transform(datasonnet("resource:classpath:mappings/postQuoterequestsResponseMock.ds"))
+                .bean(DataValidator.class, "validateZeroAmount(${body.content.get('transferAmount')})")
+                .bean(DataValidator.class,"validateRounding(${body.content.get('transferAmount')},{{dfsp.roundingvalue}})")
                 .setBody(simple("${body.content}"))
                 .marshal().json()
 

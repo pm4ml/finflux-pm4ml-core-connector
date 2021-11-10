@@ -3,6 +3,7 @@ package com.modusbox.client.processor;
 import com.modusbox.client.customexception.CCCustomException;
 import com.modusbox.client.customexception.CloseWrittenOffAccountException;
 import com.modusbox.client.enums.ErrorCode;
+import com.modusbox.client.utils.DataFormatUtils;
 import com.modusbox.log4j2.message.CustomJsonMessage;
 import com.modusbox.log4j2.message.CustomJsonMessageImpl;
 import org.apache.camel.Exchange;
@@ -42,12 +43,19 @@ public class CustomErrorProcessor implements Processor {
                 HttpOperationFailedException e = (HttpOperationFailedException) exception;
                 try {
                     if (null != e.getResponseBody()) {
+                        if(DataFormatUtils.isJSONValid(e.getResponseBody())) {
                         /* Below if block needs to be changed as per the error object structure specific to
                             CBS back end API that is being integrated in Core Connector. */
-                        JSONObject respObject = new JSONObject(e.getResponseBody());
-                        if (respObject.has("returnStatus")) {
-                            statusCode = String.valueOf(respObject.getInt("returnCode"));
-                            errorDescription = respObject.getString("returnStatus");
+                            JSONObject respObject = new JSONObject(e.getResponseBody());
+                            if (respObject.has("returnStatus")) {
+                                statusCode = String.valueOf(respObject.getInt("returnCode"));
+                                errorDescription = respObject.getString("returnStatus");
+                            }
+                        }
+                        else
+                        {
+                            statusCode = String.valueOf(ErrorCode.MALFORMED_SYNTAX.getStatusCode());
+                            errorDescription = String.valueOf(e.getResponseBody());
                         }
                     }
                 } finally {
