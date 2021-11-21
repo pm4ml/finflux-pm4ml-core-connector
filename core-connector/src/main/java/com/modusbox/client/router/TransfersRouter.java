@@ -1,13 +1,13 @@
 package com.modusbox.client.router;
 
 import com.modusbox.client.customexception.CCCustomException;
-import com.modusbox.client.customexception.CloseWrittenOffAccountException;
 import com.modusbox.client.exception.RouteExceptionHandlingConfigurer;
 import com.modusbox.client.validator.BillsPaymentResponseValidator;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.http.base.HttpOperationFailedException;
 
 public class TransfersRouter extends RouteBuilder {
 
@@ -71,8 +71,6 @@ public class TransfersRouter extends RouteBuilder {
                 .setHeader("Fineract-Platform-TenantId", constant("{{dfsp.tenant-id}}"))
                 .setHeader("Content-Type", constant("application/json"))
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
-
-
                 .marshal().json()
 
                 //.process(padLoanAccount)
@@ -91,7 +89,6 @@ public class TransfersRouter extends RouteBuilder {
                         "'Request to POST {{dfsp.host}}" + PATH2 + "${exchangeProperty.fspId}, IN Payload: ${body} IN Headers: ${headers}')")
 
                 .toD("{{dfsp.host}}" + PATH2 + "${exchangeProperty.fspId}")
-
                 .process(billsPaymentResponseValidator)
 
                 .to("bean:customJsonMessage?method=logJsonMessage(" +
@@ -117,8 +114,8 @@ public class TransfersRouter extends RouteBuilder {
                         "'Output Payload: empty')") // default logger
                 .removeHeaders("*", "X-*")
 
-                .doCatch(CCCustomException.class)
-                .to("direct:extractCustomErrors")
+                .doCatch(CCCustomException.class, HttpOperationFailedException.class)
+                    .to("direct:extractCustomErrors")
                 .doFinally().process(exchange -> {
             ((Histogram.Timer) exchange.getProperty(TIMER_NAME_POST)).observeDuration(); // stop Prometheus Histogram metric
         }).end()
