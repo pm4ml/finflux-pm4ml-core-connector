@@ -10,6 +10,8 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.http.base.HttpOperationFailedException;
 import org.apache.http.conn.ConnectTimeoutException;
+import org.apache.http.conn.HttpHostConnectException;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.stereotype.Component;
 
@@ -43,7 +45,7 @@ public class CustomErrorProcessor implements Processor {
                 HttpOperationFailedException e = (HttpOperationFailedException) exception;
                 try {
                     if (null != e.getResponseBody()) {
-                        if(DataFormatUtils.isJSONValid(e.getResponseBody())) {
+                        if (DataFormatUtils.isJSONValid(e.getResponseBody())) {
                         /* Below if block needs to be changed as per the error object structure specific to
                             CBS back end API that is being integrated in Core Connector. */
                             JSONObject respObject = new JSONObject(e.getResponseBody());
@@ -51,9 +53,16 @@ public class CustomErrorProcessor implements Processor {
                                 statusCode = String.valueOf(respObject.getInt("returnCode"));
                                 errorDescription = respObject.getString("returnStatus");
                             }
-                        }
-                        else
-                        {
+                            // Disbursement Error Handling
+                            if (respObject.has("message") && respObject.has("transferState")) {
+                                statusCode = String.valueOf(respObject.getInt("statusCode"));
+                                try {
+                                    errorDescription = respObject.getJSONObject("transferState").getJSONObject("lastError").getJSONObject("mojaloopError").getJSONObject("errorInformation").getString("errorDescription");
+                                } catch (JSONException ex) {
+                                    errorDescription = "Unknown - no mojaloopError message present";
+                                }
+                            }
+                        } else {
                             statusCode = String.valueOf(ErrorCode.MALFORMED_SYNTAX.getStatusCode());
                             errorDescription = String.valueOf(e.getResponseBody());
                         }
@@ -62,7 +71,7 @@ public class CustomErrorProcessor implements Processor {
                     reasonText = "{ \"statusCode\": \"" + statusCode + "\"," +
                             "\"message\": \"" + errorDescription + "\"} ";
                 }
-            } else if(exception instanceof CloseWrittenOffAccountException) {
+            } else if (exception instanceof CloseWrittenOffAccountException) {
                 httpResponseCode = 200;
                 reasonText = "{\"idType\": \"" + (String) exchange.getIn().getHeader("idType") +
                         "\",\"idValue\": \"" + (String) exchange.getIn().getHeader("idValue") +
@@ -72,12 +81,14 @@ public class CustomErrorProcessor implements Processor {
 
             } else {
                 try {
-                    if(exception instanceof CCCustomException) {
+                    if (exception instanceof CCCustomException) {
                         errorResponse = new JSONObject(exception.getMessage());
-                    } else if(exception instanceof InternalServerErrorException) {
+                    } else if (exception instanceof InternalServerErrorException || exception instanceof JSONException) {
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR));
-                    } else if(exception instanceof ConnectTimeoutException || exception instanceof SocketTimeoutException) {
+                    } else if (exception instanceof ConnectTimeoutException || exception instanceof SocketTimeoutException || exception instanceof HttpHostConnectException) {
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.SERVER_TIMED_OUT));
+                    } else {
+                        errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.GENERIC_DOWNSTREAM_ERROR_PAYEE));
                     }
                 } finally {
                     httpResponseCode = errorResponse.getInt("errorCode");
@@ -88,7 +99,7 @@ public class CustomErrorProcessor implements Processor {
                             "\"message\": \"" + errorDescription + "\"} ";
                 }
             }
-                customJsonMessage.logJsonMessage("error", String.valueOf(exchange.getIn().getHeader("X-CorrelationId")),
+            customJsonMessage.logJsonMessage("error", String.valueOf(exchange.getIn().getHeader("X-CorrelationId")),
                     "Processing the exception at CustomErrorProcessor", null, null,
                     exception.getMessage());
         }

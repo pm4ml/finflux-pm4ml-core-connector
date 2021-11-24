@@ -5,6 +5,9 @@ import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.http.base.HttpOperationFailedException;
+import org.apache.http.conn.HttpHostConnectException;
+import org.json.JSONException;
 //import org.apache.camel.model.dataformat.JsonLibrary;
 
 public class SendmoneyRouter extends RouteBuilder {
@@ -100,7 +103,8 @@ public class SendmoneyRouter extends RouteBuilder {
                         "null, " +
                         "'Output Payload: ${body}')")
                 // .removeHeaders("*", "X-*")
-
+                .doCatch(HttpOperationFailedException.class, JSONException.class, HttpHostConnectException.class)
+                    .to("direct:extractCustomErrors")
                 .doFinally().process(exchange -> {
                     ((Histogram.Timer) exchange.getProperty(TIMER_NAME_POST)).observeDuration(); // stop Prometheus Histogram metric
                 }).end()
