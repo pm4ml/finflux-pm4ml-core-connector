@@ -1,0 +1,6 @@
+{
+    "client_id": cml.exchangeProperty("clientId"),
+    "scope": cml.exchangeProperty("scope"),
+    "grant_type": "refresh_token",
+    "refresh_token": cml.exchangeProperty("RefreshToken")
+}

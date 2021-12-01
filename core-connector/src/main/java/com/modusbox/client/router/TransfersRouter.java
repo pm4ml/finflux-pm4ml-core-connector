@@ -2,17 +2,16 @@ package com.modusbox.client.router;
 
 import com.modusbox.client.customexception.CCCustomException;
 import com.modusbox.client.exception.RouteExceptionHandlingConfigurer;
+import com.modusbox.client.processor.TokenStore;
 import com.modusbox.client.validator.BillsPaymentResponseValidator;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.http.base.HttpOperationFailedException;
+import org.json.JSONException;
 
 public class TransfersRouter extends RouteBuilder {
-
-    //private final String PATH_NAME_POST = "Finflux hardcoded postTransfer response";
-    //private final String PATH = "/v1/paymentgateway/billerpayments/advance-fetch";
 
     private static final String TIMER_NAME_POST = "histogram_post_transfers_timer";
     private static final String TIMER_NAME_PUT = "histogram_put_transfers_timer";
@@ -80,6 +79,7 @@ public class TransfersRouter extends RouteBuilder {
                 .setProperty("fspId",simple("${body.content.get('fspId')}"))
                 .setBody(simple("${body.content}"))
                 .marshal().json()
+                .log("Check fspId : ${exchangeProperty.fspId}")
                 .to("bean:customJsonMessage?method=logJsonMessage(" +
                         "'info', " +
                         "${header.X-CorrelationId}, " +
@@ -113,8 +113,16 @@ public class TransfersRouter extends RouteBuilder {
                         "null, " +
                         "'Output Payload: empty')") // default logger
                 .removeHeaders("*", "X-*")
-
-                .doCatch(CCCustomException.class, HttpOperationFailedException.class)
+                .doCatch(HttpOperationFailedException.class)
+                    .process(exchange -> {
+                        Exception exception = exchange.getException();
+                        if (exception == null) {
+                            exception = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+                        }
+                        exchange.getIn().setBody(((HttpOperationFailedException) exception).getResponseBody().toString());
+                    })
+                    .to("direct:postTransferWithNewToken")
+                .doCatch(CCCustomException.class, HttpOperationFailedException.class, JSONException.class)
                     .to("direct:extractCustomErrors")
                 .doFinally().process(exchange -> {
             ((Histogram.Timer) exchange.getProperty(TIMER_NAME_POST)).observeDuration(); // stop Prometheus Histogram metric
@@ -196,5 +204,17 @@ public class TransfersRouter extends RouteBuilder {
         }).end()
         ;
 
+        from("direct:postTransferWithNewToken")
+            .choice()
+                .when(body().contains("invalid_token"))
+                .log("postTransfer token exception : ${body}")
+                .bean(TokenStore.class, "setAccessToken('','0')")
+                .setBody(simple("${exchangeProperty.downstreamRequestBody}"))
+                .to("direct:postTransfers")
+            .otherwise()
+                .log("postTransfer exception : ${body}")
+                .to("direct:extractCustomErrors")
+            .end()
+        ;
     }
 }
