@@ -62,6 +62,14 @@ public class CustomErrorProcessor implements Processor {
                                     errorDescription = "Unknown - no mojaloopError message present";
                                 }
                             }
+                            if (respObject.has("error"))
+                            {
+                                if(e.getStatusCode() == 401 && String.valueOf(respObject.getString("error")).equals("invalid_token"))
+                                {
+                                    statusCode = String.valueOf(ErrorCode.DESTINATION_COMMUNICATION_ERROR.getStatusCode());
+                                    errorDescription = String.valueOf(respObject.getString("error_description"));
+                                }
+                            }
                         } else {
                             statusCode = String.valueOf(ErrorCode.MALFORMED_SYNTAX.getStatusCode());
                             errorDescription = String.valueOf(e.getResponseBody());

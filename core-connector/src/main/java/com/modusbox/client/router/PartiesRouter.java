@@ -4,6 +4,7 @@ import com.modusbox.client.customexception.CCCustomException;
 import com.modusbox.client.customexception.CloseWrittenOffAccountException;
 import com.modusbox.client.exception.RouteExceptionHandlingConfigurer;
 import com.modusbox.client.processor.PadLoanAccount;
+import com.modusbox.client.processor.TokenStore;
 import com.modusbox.client.validator.AccountNumberFormatValidator;
 import com.modusbox.client.validator.GetPartyResponseValidator;
 import com.modusbox.client.validator.IdSubValueChecker;
@@ -12,6 +13,8 @@ import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.http.base.HttpOperationFailedException;
+import org.json.JSONException;
 
 import java.util.UUID;
 
@@ -57,7 +60,7 @@ public class PartiesRouter extends RouteBuilder {
                         "${header.X-CorrelationId}, " +
                         "'Request received GET /parties/${header.idType}/${header.idValue}', " +
                         "'Tracking the request', " +
-                        "'Call the Mambu API,  Track the response', " +
+                        "'Call the Finflux API,  Track the response', " +
                         "'Input Payload: ${body}')") // default logger
                 /*
                  * BEGIN processing
@@ -79,7 +82,7 @@ public class PartiesRouter extends RouteBuilder {
                 .to("bean:customJsonMessage?method=logJsonMessage(" +
                         "'info', " +
                         "${header.X-CorrelationId}, " +
-                        "'Request received GET /parties/${header.idType}/${header.idValue}', " +
+                        "'Request received GET /parties/${header.idType}/${header.idValue}/${header.idSubValue}', " +
                         "'Tracking the request', " +
                         "'Call the " + PATH_NAME + ",  Track the response', " +
                         "'Input Payload: ${body}')") // default logger
@@ -123,7 +126,6 @@ public class PartiesRouter extends RouteBuilder {
                 .process(phoneNumberValidation)
                 .unmarshal().json()
 
-
                 .marshal().json()
                 .transform(datasonnet("resource:classpath:mappings/getPartiesResponse.ds"))
                 .setBody(simple("${body.content}"))
@@ -135,18 +137,39 @@ public class PartiesRouter extends RouteBuilder {
                 .to("bean:customJsonMessage?method=logJsonMessage(" +
                         "'info', " +
                         "${header.X-CorrelationId}, " +
-                        "'Response for GET /parties/${header.idType}/${header.idValue}', " +
+                        "'Response for GET /parties/${header.idType}/${header.idValue}/${header.idSubValue}', " +
                         "'Tracking the response', " +
                         "null, " +
                         "'Output Payload: ${body}')") // default logger
                 .removeHeaders("*", "X-*")
-
-                .doCatch(CCCustomException.class,CloseWrittenOffAccountException.class)
+                .doCatch(HttpOperationFailedException.class)
+                    .process(exchange -> {
+                        Exception exception = exchange.getException();
+                        if (exception == null) {
+                            exception = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+                        }
+                        exchange.getIn().setBody(((HttpOperationFailedException) exception).getResponseBody().toString());
+                })
+                    .to("direct:getPartiesWithNewToken")
+                .doCatch(CCCustomException.class,CloseWrittenOffAccountException.class, HttpOperationFailedException.class, JSONException.class)
                     .to("direct:extractCustomErrors")
 
                 .doFinally().process(exchange -> {
             ((Histogram.Timer) exchange.getProperty(TIMER_NAME)).observeDuration(); // stop Prometheus Histogram metric
         }).end()
+        ;
+
+        from("direct:getPartiesWithNewToken")
+                .choice()
+                    .when(body().contains("invalid_token"))
+                        .log("getParties token exception : ${body}")
+                        .bean(TokenStore.class, "setAccessToken('','0')")
+                        .setBody(simple("${exchangeProperty.downstreamRequestBody}"))
+                        .to("direct:getPartiesByIdTypeIdValueIdSubValue")
+                .otherwise()
+                    .log("getParties exception : ${body}")
+                    .to("direct:extractCustomErrors")
+                .end()
         ;
     }
 }
