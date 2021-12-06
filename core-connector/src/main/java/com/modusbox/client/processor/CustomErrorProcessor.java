@@ -116,7 +116,11 @@ public class CustomErrorProcessor implements Processor {
                     } else if (exception instanceof ConnectTimeoutException || exception instanceof SocketTimeoutException || exception instanceof HttpHostConnectException) {
                         CheckSteps += "############### ConnectTimeoutException & SocketTimeoutException & HttpHostConnectException ############### \\r\\n";
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.SERVER_TIMED_OUT));
-                    } else {
+                    } else if (exception instanceof Exception) {
+                        CheckSteps += "############### Unknown Exception ############### \\r\\n";
+                        System.out.println(exception.getMessage());
+                        errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.GENERIC_DOWNSTREAM_ERROR_PAYEE));
+                    }else {
                         CheckSteps += "############### Else TRY Else ############### \\r\\n";
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.GENERIC_DOWNSTREAM_ERROR_PAYEE));
                     }

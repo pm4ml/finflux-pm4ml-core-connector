@@ -126,7 +126,7 @@ public class TransfersRouter extends RouteBuilder {
                         exchange.getIn().setBody(((HttpOperationFailedException) exception).getResponseBody().toString());
                     })
                     .to("direct:postTransferWithNewToken")
-                .doCatch(CCCustomException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class)
+                .doCatch(CCCustomException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class,Exception.class)
                     .to("direct:extractCustomErrors")
                 .doFinally().process(exchange -> {
             ((Histogram.Timer) exchange.getProperty(TIMER_NAME_POST)).observeDuration(); // stop Prometheus Histogram metric
