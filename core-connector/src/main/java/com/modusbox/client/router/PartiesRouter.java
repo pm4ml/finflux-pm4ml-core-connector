@@ -14,8 +14,11 @@ import io.prometheus.client.Histogram;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.http.base.HttpOperationFailedException;
+import org.apache.http.conn.ConnectTimeoutException;
+import org.apache.http.conn.HttpHostConnectException;
 import org.json.JSONException;
 
+import java.net.SocketTimeoutException;
 import java.util.UUID;
 
 public class PartiesRouter extends RouteBuilder {
@@ -151,7 +154,7 @@ public class PartiesRouter extends RouteBuilder {
                         exchange.getIn().setBody(((HttpOperationFailedException) exception).getResponseBody().toString());
                 })
                     .to("direct:getPartiesWithNewToken")
-                .doCatch(CCCustomException.class,CloseWrittenOffAccountException.class, HttpOperationFailedException.class, JSONException.class)
+                .doCatch(CCCustomException.class,CloseWrittenOffAccountException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class)
                     .to("direct:extractCustomErrors")
 
                 .doFinally().process(exchange -> {
