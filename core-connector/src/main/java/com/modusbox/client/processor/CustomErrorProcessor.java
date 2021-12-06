@@ -29,6 +29,8 @@ public class CustomErrorProcessor implements Processor {
         String reasonText = "{ \"statusCode\": \"5000\"," +
                 "\"message\": \"Unknown\" }";
         String statusCode = "5000";
+
+        String CheckSteps = "";
         int httpResponseCode = 500;
 
         JSONObject errorResponse = null;
@@ -41,20 +43,27 @@ public class CustomErrorProcessor implements Processor {
         }
 
         if (exception != null) {
+            CheckSteps = "############### Exception is not null ############### \\r\\n";
             if (exception instanceof HttpOperationFailedException) {
+                CheckSteps += "############### HttpOperationFailedException ############### \\r\\n";
                 HttpOperationFailedException e = (HttpOperationFailedException) exception;
                 try {
                     if (null != e.getResponseBody()) {
+                        CheckSteps += "############### e.getResponseBody() is not null ############### \\r\\n";
                         if (DataFormatUtils.isJSONValid(e.getResponseBody())) {
+                            CheckSteps += "############### valid Json ############### \\r\\n";
                         /* Below if block needs to be changed as per the error object structure specific to
                             CBS back end API that is being integrated in Core Connector. */
                             JSONObject respObject = new JSONObject(e.getResponseBody());
                             if (respObject.has("returnStatus")) {
+                                CheckSteps += "############### Contains returnStatus ############### \\r\\n";
                                 statusCode = String.valueOf(respObject.getInt("returnCode"));
                                 errorDescription = respObject.getString("returnStatus");
+
                             }
                             // Disbursement Error Handling
-                            if (respObject.has("message") && respObject.has("transferState")) {
+                            else if (respObject.has("message") && respObject.has("transferState")) {
+                                CheckSteps += "############### Contains message & transferState ############### \\r\\n";
                                 statusCode = String.valueOf(respObject.getInt("statusCode"));
                                 try {
                                     errorDescription = respObject.getJSONObject("transferState").getJSONObject("lastError").getJSONObject("mojaloopError").getJSONObject("errorInformation").getString("errorDescription");
@@ -62,24 +71,32 @@ public class CustomErrorProcessor implements Processor {
                                     errorDescription = "Unknown - no mojaloopError message present";
                                 }
                             }
-                            if (respObject.has("error"))
+                            else if(e.getStatusCode() == 401 && respObject.has("error") && String.valueOf(respObject.getString("error")).equals("invalid_token"))
                             {
-                                if(e.getStatusCode() == 401 && String.valueOf(respObject.getString("error")).equals("invalid_token"))
-                                {
-                                    statusCode = String.valueOf(ErrorCode.DESTINATION_COMMUNICATION_ERROR.getStatusCode());
-                                    errorDescription = String.valueOf(respObject.getString("error_description"));
-                                }
+                                CheckSteps += "############### StatusCode 401 & Contains error ############### \\r\\n";
+                                statusCode = String.valueOf(ErrorCode.DESTINATION_COMMUNICATION_ERROR.getStatusCode());
+                                errorDescription = String.valueOf(respObject.getString("error_description"));
                             }
+                            else
+                            {
+                                CheckSteps += "############### Valid json but can't define error ############### \\r\\n";
+                                statusCode = String.valueOf(ErrorCode.DESTINATION_COMMUNICATION_ERROR.getStatusCode());
+                                errorDescription = ErrorCode.DESTINATION_COMMUNICATION_ERROR.getDefaultMessage();
+                            }
+
                         } else {
+                            CheckSteps += "############### Invalid json format ############### \\r\\n";
                             statusCode = String.valueOf(ErrorCode.MALFORMED_SYNTAX.getStatusCode());
                             errorDescription = String.valueOf(e.getResponseBody());
                         }
                     }
                 } finally {
+                    CheckSteps += "############### Finally of HttpOperationFailedException ############### \\r\\n";
                     reasonText = "{ \"statusCode\": \"" + statusCode + "\"," +
                             "\"message\": \"" + errorDescription + "\"} ";
                 }
             } else if (exception instanceof CloseWrittenOffAccountException) {
+                CheckSteps += "############### CloseWrittenOffAccountException ############### \\r\\n";
                 httpResponseCode = 200;
                 reasonText = "{\"idType\": \"" + (String) exchange.getIn().getHeader("idType") +
                         "\",\"idValue\": \"" + (String) exchange.getIn().getHeader("idValue") +
@@ -89,16 +106,22 @@ public class CustomErrorProcessor implements Processor {
 
             } else {
                 try {
+                    CheckSteps += "############### Else TRY ############### \\r\\n";
                     if (exception instanceof CCCustomException) {
+                        CheckSteps += "############### CCCustomException ############### \\r\\n";
                         errorResponse = new JSONObject(exception.getMessage());
                     } else if (exception instanceof InternalServerErrorException || exception instanceof JSONException) {
+                        CheckSteps += "############### InternalServerErrorException & JSONException ############### \\r\\n";
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR));
                     } else if (exception instanceof ConnectTimeoutException || exception instanceof SocketTimeoutException || exception instanceof HttpHostConnectException) {
+                        CheckSteps += "############### ConnectTimeoutException & SocketTimeoutException & HttpHostConnectException ############### \\r\\n";
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.SERVER_TIMED_OUT));
                     } else {
+                        CheckSteps += "############### Else TRY Else ############### \\r\\n";
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.GENERIC_DOWNSTREAM_ERROR_PAYEE));
                     }
                 } finally {
+                    CheckSteps += "############### Else TRY Finally ############### \\r\\n";
                     httpResponseCode = errorResponse.getInt("errorCode");
                     errorResponse = errorResponse.getJSONObject("errorInformation");
                     statusCode = String.valueOf(errorResponse.getInt("statusCode"));
@@ -110,6 +133,8 @@ public class CustomErrorProcessor implements Processor {
             customJsonMessage.logJsonMessage("error", String.valueOf(exchange.getIn().getHeader("X-CorrelationId")),
                     "Processing the exception at CustomErrorProcessor", null, null,
                     exception.getMessage());
+            System.out.println("Http Response Code" + httpResponseCode);
+            System.out.println(CheckSteps);
         }
 
         exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, httpResponseCode);
