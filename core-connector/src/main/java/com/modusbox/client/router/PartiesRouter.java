@@ -18,6 +18,7 @@ import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.conn.HttpHostConnectException;
 import org.json.JSONException;
 
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.UUID;
 
@@ -113,9 +114,9 @@ public class PartiesRouter extends RouteBuilder {
                         "'Calling the " + PATH_NAME + "', " +
                         "null, " +
                         "null, " +
-                        "'Request to POST {{dfsp.host}}" + PATH + ", IN Payload: ${body} IN Headers: ${headers}')")
+                        "'Request to POST {{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}, IN Payload: ${body} IN Headers: ${headers}')")
 
-                .toD("{{dfsp.host}}" + PATH)
+                .toD("{{dfsp.host}}" + PATH+"${exchangeProperty.CustomTimeout}")
                 //.marshal().json()
                 .to("bean:customJsonMessage?method=logJsonMessage(" +
                         "'info', " +
@@ -123,7 +124,7 @@ public class PartiesRouter extends RouteBuilder {
                         "'Called " + PATH_NAME + "', " +
                         "null, " +
                         "null, " +
-                        "'Response from POST {{dfsp.host}}" + PATH + ", OUT Payload: ${body}')")
+                        "'Response from POST {{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}, OUT Payload: ${body}')")
                 .process(getPartyResponseValidator)
 
                 .process(phoneNumberValidation)
@@ -154,7 +155,7 @@ public class PartiesRouter extends RouteBuilder {
                         exchange.getIn().setBody(((HttpOperationFailedException) exception).getResponseBody().toString());
                 })
                     .to("direct:getPartiesWithNewToken")
-                .doCatch(CCCustomException.class,CloseWrittenOffAccountException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class,Exception.class)
+                .doCatch(CCCustomException.class,CloseWrittenOffAccountException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class, SocketException.class)
                     .to("direct:extractCustomErrors")
 
                 .doFinally().process(exchange -> {

@@ -16,6 +16,7 @@ import org.json.JSONObject;
 import org.springframework.stereotype.Component;
 
 import javax.ws.rs.InternalServerErrorException;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
 @Component("customErrorProcessor")
@@ -113,14 +114,10 @@ public class CustomErrorProcessor implements Processor {
                     } else if (exception instanceof InternalServerErrorException || exception instanceof JSONException) {
                         CheckSteps += "############### InternalServerErrorException & JSONException ############### \\r\\n";
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR));
-                    } else if (exception instanceof ConnectTimeoutException || exception instanceof SocketTimeoutException || exception instanceof HttpHostConnectException) {
-                        CheckSteps += "############### ConnectTimeoutException & SocketTimeoutException & HttpHostConnectException ############### \\r\\n";
+                    } else if (exception instanceof ConnectTimeoutException || exception instanceof SocketTimeoutException || exception instanceof HttpHostConnectException || exception instanceof SocketException) {
+                        CheckSteps += "############### ConnectTimeoutException & SocketTimeoutException & HttpHostConnectException & SocketException ############### \\r\\n";
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.SERVER_TIMED_OUT));
-                    } else if (exception instanceof Exception) {
-                        CheckSteps += "############### Unknown Exception ############### \\r\\n";
-                        System.out.println(exception.getMessage());
-                        errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.GENERIC_DOWNSTREAM_ERROR_PAYEE));
-                    }else {
+                    } else {
                         CheckSteps += "############### Else TRY Else ############### \\r\\n";
                         errorResponse = new JSONObject(ErrorCode.getErrorResponse(ErrorCode.GENERIC_DOWNSTREAM_ERROR_PAYEE));
                     }
