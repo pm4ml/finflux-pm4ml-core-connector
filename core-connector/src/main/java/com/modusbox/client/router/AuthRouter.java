@@ -20,6 +20,15 @@ public class AuthRouter extends RouteBuilder {
         from("direct:getAuthHeader")
                 .setProperty("downstreamRequestBody", simple("${body}"))
                 .setProperty("AccessToken", method(TokenStore.class, "getAccessToken()"))
+
+                .choice()
+                    .when(header("CustomTimeout").isEqualTo(""))
+                        .setProperty("CustomTimeout",simple(""))
+                    .otherwise()
+                        .setProperty("CustomTimeout",simple("?{{dfsp.customtimeout}}"))
+                .end()
+
+                .log(String.valueOf(simple("${exchangeProperty.CustomTimeout}")))
                 .choice()
                     .when(method(TokenStore.class, "getAccessToken()").isEqualTo(""))
                         .setProperty("username", simple("{{dfsp.username}}"))
@@ -30,14 +39,6 @@ public class AuthRouter extends RouteBuilder {
                         .setProperty("isPasswordEncrypted", simple("{{dfsp.is-password-encrypted}}"))
                         .setHeader("CustomTimeout",simple("{{dfsp.customtimeout}}"))
 
-                        .choice()
-                            .when(header("CustomTimeout").isEqualTo(""))
-                                .setProperty("CustomTimeout",simple(""))
-                            .otherwise()
-                                .setProperty("CustomTimeout",simple("?{{dfsp.customtimeout}}"))
-                        .end()
-
-                        .log(String.valueOf(simple("${exchangeProperty.CustomTimeout}")))
                         .removeHeaders("Camel*")
                         .setHeader("Fineract-Platform-TenantId", simple("{{dfsp.tenant-id}}"))
                         .setHeader("Content-Type", constant("application/json"))
