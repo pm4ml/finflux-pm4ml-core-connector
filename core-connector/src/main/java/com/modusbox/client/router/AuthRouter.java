@@ -28,6 +28,16 @@ public class AuthRouter extends RouteBuilder {
                         .setProperty("clientId", simple("{{dfsp.client-id}}"))
                         .setProperty("grantType", simple("{{dfsp.grant-type}}"))
                         .setProperty("isPasswordEncrypted", simple("{{dfsp.is-password-encrypted}}"))
+                        .setHeader("CustomTimeout",simple("{{dfsp.customtimeout}}"))
+
+                        .choice()
+                            .when(header("CustomTimeout").isEqualTo(""))
+                                .setProperty("CustomTimeout",simple(""))
+                            .otherwise()
+                                .setProperty("CustomTimeout",simple("?{{dfsp.customtimeout}}"))
+                        .end()
+
+                        .log(String.valueOf(simple("${exchangeProperty.CustomTimeout}")))
                         .removeHeaders("Camel*")
                         .setHeader("Fineract-Platform-TenantId", simple("{{dfsp.tenant-id}}"))
                         .setHeader("Content-Type", constant("application/json"))
@@ -44,8 +54,8 @@ public class AuthRouter extends RouteBuilder {
                                 "'Calling the access token " + PATH_NAME + "', " +
                                 "null, " +
                                 "null, " +
-                                "'Request to POST {{dfsp.host}}" + PATH + ", IN Payload: ${body}')")
-                        .toD("{{dfsp.host}}" + PATH)
+                                "'Request to POST {{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}, IN Payload: ${body}')")
+                        .toD("{{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}")
                         .unmarshal().json()
 
                         .setProperty("RefreshToken", simple("${body['refresh_token']}"))
@@ -61,8 +71,8 @@ public class AuthRouter extends RouteBuilder {
                                 "'Calling the refresh token " + PATH_NAME + "', " +
                                 "null, " +
                                 "null, " +
-                                "'Request to POST {{dfsp.host}}" + PATH + ", IN Payload: ${body}')")
-                        .toD("{{dfsp.host}}" + PATH)
+                                "'Request to POST {{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}, IN Payload: ${body}')")
+                        .toD("{{dfsp.host}}" + PATH+"${exchangeProperty.CustomTimeout}")
                         .unmarshal().json()
 
                         .setProperty("AccessToken", simple("${body['access_token']}"))
