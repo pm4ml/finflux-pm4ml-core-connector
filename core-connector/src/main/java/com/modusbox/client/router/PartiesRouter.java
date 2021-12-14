@@ -29,6 +29,7 @@ public class PartiesRouter extends RouteBuilder {
     private final GetPartyResponseValidator getPartyResponseValidator = new GetPartyResponseValidator();
     private final AccountNumberFormatValidator accountNumberFormatValidator = new AccountNumberFormatValidator();
 
+
     private final IdSubValueChecker idSubValueChecker = new IdSubValueChecker();
 
     private static final String TIMER_NAME = "histogram_get_parties_timer";
@@ -46,13 +47,14 @@ public class PartiesRouter extends RouteBuilder {
     private final String PATH_NAME = "Finflux Advance Fetch Due API";
     private final String PATH = "/v1/paymentgateway/billerpayments/advance-fetch";
 
+
     private final RouteExceptionHandlingConfigurer exceptionHandlingConfigurer = new RouteExceptionHandlingConfigurer();
 
     public void configure() {
 
         exceptionHandlingConfigurer.configureExceptionHandling(this);
         //new ExceptionHandlingRouter(this);
-
+//
         from("direct:getPartiesByIdTypeIdValue").routeId("com.modusbox.getPartiesByIdTypeIdValue").doTry()
                 .process(exchange -> {
                     reqCounter.inc(1); // increment Prometheus Counter metric
@@ -102,7 +104,8 @@ public class PartiesRouter extends RouteBuilder {
                 .setHeader("Content-Type", constant("application/json"))
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setBody(constant(null))
-
+                .setHeader(Exchange.HTTP_QUERY, constant("{{dfsp.customtimeout}}"))
+                .setHeader("Connection", constant("Close"))
                 .marshal().json()
                 .transform(datasonnet("resource:classpath:mappings/getPartiesRequest.ds"))
                 .setBody(simple("${body.content}"))
@@ -114,9 +117,9 @@ public class PartiesRouter extends RouteBuilder {
                         "'Calling the " + PATH_NAME + "', " +
                         "null, " +
                         "null, " +
-                        "'Request to POST {{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}, IN Payload: ${body} IN Headers: ${headers}')")
-
-                .toD("{{dfsp.host}}" + PATH+"${exchangeProperty.CustomTimeout}")
+                        "'Request to POST {{dfsp.host}}" + PATH +", IN Payload: ${body} IN Headers: ${headers}')")
+                .log("${header.CamelHttpQuery}")
+                .toD("{{dfsp.host}}" + PATH)
                 //.marshal().json()
                 .to("bean:customJsonMessage?method=logJsonMessage(" +
                         "'info', " +
@@ -124,7 +127,7 @@ public class PartiesRouter extends RouteBuilder {
                         "'Called " + PATH_NAME + "', " +
                         "null, " +
                         "null, " +
-                        "'Response from POST {{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}, OUT Payload: ${body}')")
+                        "'Response from POST {{dfsp.host}}" + PATH +", OUT Payload: ${body}')")
                 .process(getPartyResponseValidator)
 
                 .process(phoneNumberValidation)
@@ -146,6 +149,9 @@ public class PartiesRouter extends RouteBuilder {
                         "null, " +
                         "'Output Payload: ${body}')") // default logger
                 .removeHeaders("*", "X-*")
+                .setProperty("RetryStatus",simple(""))
+                .doCatch(SocketException.class)
+                    .to("direct:getPartiesWhenSocketException")
                 .doCatch(HttpOperationFailedException.class)
                     .process(exchange -> {
                         Exception exception = exchange.getException();
@@ -155,7 +161,8 @@ public class PartiesRouter extends RouteBuilder {
                         exchange.getIn().setBody(((HttpOperationFailedException) exception).getResponseBody().toString());
                 })
                     .to("direct:getPartiesWithNewToken")
-                .doCatch(CCCustomException.class,CloseWrittenOffAccountException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class, SocketException.class)
+
+                .doCatch(CCCustomException.class,CloseWrittenOffAccountException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class)
                     .to("direct:extractCustomErrors")
 
                 .doFinally().process(exchange -> {
@@ -172,6 +179,20 @@ public class PartiesRouter extends RouteBuilder {
                         .to("direct:getPartiesByIdTypeIdValueIdSubValue")
                 .otherwise()
                     .log("getParties exception : ${body}")
+                    .to("direct:extractCustomErrors")
+                .end()
+        ;
+
+        from("direct:getPartiesWhenSocketException")
+                .log("${exchangeProperty.RetryStatus}")
+                .choice()
+                    .when().simple("${exchangeProperty.RetryStatus} == null")
+                        .setProperty("RetryStatus",simple("one"))
+                        .log("Connect reset and tried again")
+                        .setBody(simple("${exchangeProperty.downstreamRequestBody}"))
+                        .to("direct:getPartiesByIdTypeIdValueIdSubValue")
+                .otherwise()
+                    .log("getParties exception : Connection still reset")
                     .to("direct:extractCustomErrors")
                 .end()
         ;

@@ -75,6 +75,8 @@ public class TransfersRouter extends RouteBuilder {
                 .setHeader("Fineract-Platform-TenantId", constant("{{dfsp.tenant-id}}"))
                 .setHeader("Content-Type", constant("application/json"))
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
+                .setHeader(Exchange.HTTP_QUERY, constant("{{dfsp.customtimeout}}"))
+                .log("${header.CamelHttpQuery}")
                 .marshal().json()
 
                 //.process(padLoanAccount)
