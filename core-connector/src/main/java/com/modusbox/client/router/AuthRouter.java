@@ -20,15 +20,13 @@ public class AuthRouter extends RouteBuilder {
         from("direct:getAuthHeader")
                 .setProperty("downstreamRequestBody", simple("${body}"))
                 .setProperty("AccessToken", method(TokenStore.class, "getAccessToken()"))
-
-                .choice()
-                    .when(header("CustomTimeout").isEqualTo(""))
-                        .setProperty("CustomTimeout",simple(""))
-                    .otherwise()
-                        .setProperty("CustomTimeout",simple("?{{dfsp.customtimeout}}"))
-                .end()
-
-                .log(String.valueOf(simple("${exchangeProperty.CustomTimeout}")))
+//                .setHeader("CustomTimeout",simple("{{dfsp.customtimeout}}"))
+//                .choice()
+//                    .when(header("CustomTimeout").isEqualTo(""))
+//                        .setProperty("CustomTimeout",simple(""))
+//                    .otherwise()
+//                        .setProperty("CustomTimeout",simple("{{dfsp.customtimeout}}"))
+//                .end()
                 .choice()
                     .when(method(TokenStore.class, "getAccessToken()").isEqualTo(""))
                         .setProperty("username", simple("{{dfsp.username}}"))
@@ -37,12 +35,14 @@ public class AuthRouter extends RouteBuilder {
                         .setProperty("clientId", simple("{{dfsp.client-id}}"))
                         .setProperty("grantType", simple("{{dfsp.grant-type}}"))
                         .setProperty("isPasswordEncrypted", simple("{{dfsp.is-password-encrypted}}"))
-                        .setHeader("CustomTimeout",simple("{{dfsp.customtimeout}}"))
 
                         .removeHeaders("Camel*")
                         .setHeader("Fineract-Platform-TenantId", simple("{{dfsp.tenant-id}}"))
                         .setHeader("Content-Type", constant("application/json"))
                         .setHeader(Exchange.HTTP_METHOD, constant("POST"))
+                        .setHeader(Exchange.HTTP_QUERY, constant("{{dfsp.customtimeout}}"))
+                        .setHeader("Connection", constant("Close"))
+                        .log("${header.CamelHttpQuery}")
                         .setBody(constant(""))
                         .marshal().json()
                         .transform(datasonnet("resource:classpath:mappings/postAuthTokenRequest.ds"))
@@ -55,8 +55,8 @@ public class AuthRouter extends RouteBuilder {
                                 "'Calling the access token " + PATH_NAME + "', " +
                                 "null, " +
                                 "null, " +
-                                "'Request to POST {{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}, IN Payload: ${body}')")
-                        .toD("{{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}")
+                                "'Request to POST {{dfsp.host}}" + PATH +", IN Payload: ${body}')")
+                        .toD("{{dfsp.host}}" + PATH)
                         .unmarshal().json()
 
                         .setProperty("RefreshToken", simple("${body['refresh_token']}"))
@@ -72,8 +72,8 @@ public class AuthRouter extends RouteBuilder {
                                 "'Calling the refresh token " + PATH_NAME + "', " +
                                 "null, " +
                                 "null, " +
-                                "'Request to POST {{dfsp.host}}" + PATH +"${exchangeProperty.CustomTimeout}, IN Payload: ${body}')")
-                        .toD("{{dfsp.host}}" + PATH+"${exchangeProperty.CustomTimeout}")
+                                "'Request to POST {{dfsp.host}}" + PATH +", IN Payload: ${body}')")
+                        .toD("{{dfsp.host}}" + PATH)
                         .unmarshal().json()
 
                         .setProperty("AccessToken", simple("${body['access_token']}"))

@@ -17,5 +17,8 @@ public class PadLoanAccount implements Processor {
             }
         }
         exchange.setProperty("loanAccount", loanAccount);
+//        if(exchange.getProperty("RetryStatus") != "one") {
+//            throw new SocketException();
+//        }
     }
 }
