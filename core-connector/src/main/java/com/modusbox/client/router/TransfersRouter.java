@@ -76,6 +76,7 @@ public class TransfersRouter extends RouteBuilder {
                 .setHeader("Content-Type", constant("application/json"))
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setHeader(Exchange.HTTP_QUERY, constant("{{dfsp.customtimeout}}"))
+                .setHeader("Connection", constant("keep-alive"))
                 .log("${header.CamelHttpQuery}")
                 .marshal().json()
 
@@ -120,6 +121,9 @@ public class TransfersRouter extends RouteBuilder {
                         "null, " +
                         "'Output Payload: empty')") // default logger
                 .removeHeaders("*", "X-*")
+                .setProperty("RetryPostTransferStatus",constant(null))
+                .doCatch(SocketException.class)
+                    .to("direct:postTransferWhenSocketException")
                 .doCatch(HttpOperationFailedException.class)
                     .process(exchange -> {
                         Exception exception = exchange.getException();
@@ -129,7 +133,7 @@ public class TransfersRouter extends RouteBuilder {
                         exchange.getIn().setBody(((HttpOperationFailedException) exception).getResponseBody().toString());
                     })
                     .to("direct:postTransferWithNewToken")
-                .doCatch(CCCustomException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class, SocketException.class)
+                .doCatch(CCCustomException.class, HttpOperationFailedException.class, JSONException.class, ConnectTimeoutException.class, SocketTimeoutException.class, HttpHostConnectException.class)
                     .to("direct:extractCustomErrors")
                 .doFinally().process(exchange -> {
             ((Histogram.Timer) exchange.getProperty(TIMER_NAME_POST)).observeDuration(); // stop Prometheus Histogram metric
@@ -214,14 +218,28 @@ public class TransfersRouter extends RouteBuilder {
         from("direct:postTransferWithNewToken")
             .choice()
                 .when(body().contains("invalid_token"))
-                .log("postTransfer token exception : ${body}")
-                .bean(TokenStore.class, "setAccessToken('','0')")
-                .setBody(simple("${exchangeProperty.downstreamRequestBody}"))
-                .to("direct:postTransfers")
+                    .log("postTransfer token exception : ${body}")
+                    .bean(TokenStore.class, "setAccessToken('','0')")
+                    .setBody(simple("${exchangeProperty.downstreamRequestBody}"))
+                    .to("direct:postTransfers")
             .otherwise()
                 .log("postTransfer exception : ${body}")
                 .to("direct:extractCustomErrors")
             .end()
+        ;
+
+        from("direct:postTransferWhenSocketException")
+                .log("RetryPostTransferStatus : ${exchangeProperty.RetryPostTransferStatus}")
+                .choice()
+                    .when().simple("${exchangeProperty.RetryPostTransferStatus} == null")
+                        .setProperty("RetryPostTransferStatus",simple("one"))
+                        .log("Connection reset and tried again")
+                        .setBody(simple("${exchangeProperty.downstreamRequestBody}"))
+                        .to("direct:postTransfers")
+                .otherwise()
+                    .log("postTransfer exception : Connection still reset")
+                    .to("direct:extractCustomErrors")
+                .end()
         ;
     }
 }
