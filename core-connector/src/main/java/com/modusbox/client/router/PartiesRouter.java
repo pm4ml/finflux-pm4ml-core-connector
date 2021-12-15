@@ -150,7 +150,7 @@ public class PartiesRouter extends RouteBuilder {
                         "null, " +
                         "'Output Payload: ${body}')") // default logger
                 .removeHeaders("*", "X-*")
-                .setProperty("RetryGetPartyStatus",simple(null))
+                .setProperty("RetryGetPartyStatus",constant(null))
                 .doCatch(SocketException.class)
                     .to("direct:getPartiesWhenSocketException")
                 .doCatch(HttpOperationFailedException.class)
@@ -185,7 +185,7 @@ public class PartiesRouter extends RouteBuilder {
         ;
 
         from("direct:getPartiesWhenSocketException")
-                .log("${exchangeProperty.RetryGetPartyStatus}")
+                .log("RetryGetPartyStatus : ${exchangeProperty.RetryGetPartyStatus}")
                 .choice()
                     .when().simple("${exchangeProperty.RetryGetPartyStatus} == null")
                         .setProperty("RetryGetPartyStatus",simple("one"))

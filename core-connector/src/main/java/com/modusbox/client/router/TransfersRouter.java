@@ -121,7 +121,7 @@ public class TransfersRouter extends RouteBuilder {
                         "null, " +
                         "'Output Payload: empty')") // default logger
                 .removeHeaders("*", "X-*")
-                .setProperty("RetryPostTransferStatus",simple(null))
+                .setProperty("RetryPostTransferStatus",constant(null))
                 .doCatch(SocketException.class)
                     .to("direct:postTransferWhenSocketException")
                 .doCatch(HttpOperationFailedException.class)
@@ -229,7 +229,7 @@ public class TransfersRouter extends RouteBuilder {
         ;
 
         from("direct:postTransferWhenSocketException")
-                .log("${exchangeProperty.RetryPostTransferStatus}")
+                .log("RetryPostTransferStatus : ${exchangeProperty.RetryPostTransferStatus}")
                 .choice()
                     .when().simple("${exchangeProperty.RetryPostTransferStatus} == null")
                         .setProperty("RetryPostTransferStatus",simple("one"))

@@ -1,7 +1,6 @@
 package com.modusbox.client.validator;
 
 import com.modusbox.client.customexception.CCCustomException;
-import com.modusbox.client.customexception.CloseWrittenOffAccountException;
 import com.modusbox.client.enums.ErrorCode;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
