@@ -41,7 +41,7 @@ public class AuthRouter extends RouteBuilder {
                         .setHeader("Content-Type", constant("application/json"))
                         .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                         .setHeader(Exchange.HTTP_QUERY, constant("{{dfsp.customtimeout}}"))
-                        .setHeader("Connection", constant("Close"))
+                        .setHeader("Connection", constant("keep-alive"))
                         .log("${header.CamelHttpQuery}")
                         .setBody(constant(""))
                         .marshal().json()
