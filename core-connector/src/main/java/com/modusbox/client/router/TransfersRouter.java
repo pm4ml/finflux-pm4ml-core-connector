@@ -20,6 +20,7 @@ public class TransfersRouter extends RouteBuilder {
 
     private static final String TIMER_NAME_POST = "histogram_post_transfers_timer";
     private static final String TIMER_NAME_PUT = "histogram_put_transfers_timer";
+    private static final String TIMER_NAME_GET = "histogram_get_transfers_timer";
 
     private final BillsPaymentResponseValidator billsPaymentResponseValidator = new BillsPaymentResponseValidator();
 
@@ -33,6 +34,11 @@ public class TransfersRouter extends RouteBuilder {
             .help("Total requests for POST /transfers.")
             .register();
 
+    public static final Counter reqCounterGet = Counter.build()
+            .name("counter_get_transfers_requests_total")
+            .help("Total requests for GET /transfers.")
+            .register();
+
     private static final Histogram reqLatencyPost = Histogram.build()
             .name("histogram_post_transfers_request_latency")
             .help("Request latency in seconds for POST /transfers.")
@@ -41,6 +47,11 @@ public class TransfersRouter extends RouteBuilder {
     private static final Histogram reqLatencyPut = Histogram.build()
             .name("histogram_put_transfers_request_latency")
             .help("Request latency in seconds for PUT /transfers.")
+            .register();
+
+    private static final Histogram reqLatencyGet = Histogram.build()
+            .name("histogram_get_transfers_request_latency")
+            .help("Request latency in seconds for GET /transfers.")
             .register();
 
     private final String PATH_NAME_PUT = "Finflux Bill Payment Direct Process API";
@@ -228,6 +239,50 @@ public class TransfersRouter extends RouteBuilder {
             .end()
         ;
 
+        from("direct:getTransfersByTransferId").routeId("com.modusbox.getTransfers").doTry()
+                .process(exchange -> {
+                    reqCounterGet.inc(1); // increment Prometheus Counter metric
+                    exchange.setProperty(TIMER_NAME_GET, reqLatencyGet.startTimer()); // initiate Prometheus Histogram metric
+                })
+                .to("bean:customJsonMessage?method=logJsonMessage('info', ${header.X-CorrelationId}, " +
+                        "'Request received, GET /transfers/${header.transferId}', " +
+                        "null, null, null)")
+                /*
+                 * BEGIN processing
+                 */
+
+                .removeHeaders("CamelHttp*")
+                .setHeader("Content-Type", constant("application/json"))
+                .setHeader("Accept", constant("application/json"))
+                .setHeader(Exchange.HTTP_METHOD, constant("GET"))
+
+                .to("bean:customJsonMessage?method=logJsonMessage('info', ${header.X-CorrelationId}, " +
+                        "'Calling Hub API, get transfers, GET {{dfsp.host}}', " +
+                        "'Tracking the request', 'Track the response', 'Input Payload: ${body}')")
+                .toD("{{ml-conn.outbound.host}}/transfers/${header.transferId}?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                .unmarshal().json()
+                .to("bean:customJsonMessage?method=logJsonMessage('info', ${header.X-CorrelationId}, " +
+                        "'Response from Hub API, get transfers: ${body}', " +
+                        "'Tracking the response', 'Verify the response', null)")
+//                .process(exchange -> System.out.println())
+
+                .marshal().json()
+                .transform(datasonnet("resource:classpath:mappings/getTransfersResponse.ds"))
+                .setBody(simple("${body.content}"))
+                .marshal().json()
+
+                /*
+                 * END processing
+                 */
+                .to("bean:customJsonMessage?method=logJsonMessage('info', ${header.X-CorrelationId}, " +
+                        "'Final Response: ${body}', " +
+                        "null, null, 'Response of GET /transfers/${header.transferId} API')")
+
+                .doFinally().process(exchange -> {
+            ((Histogram.Timer) exchange.getProperty(TIMER_NAME_GET)).observeDuration(); // stop Prometheus Histogram metric
+        }).end()
+        ;
+      
         from("direct:postTransferWhenSocketException")
                 .log("RetryPostTransferStatus : ${exchangeProperty.RetryPostTransferStatus}")
                 .choice()
