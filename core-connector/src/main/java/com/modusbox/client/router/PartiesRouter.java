@@ -105,7 +105,8 @@ public class PartiesRouter extends RouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setBody(constant(null))
                 .setHeader(Exchange.HTTP_QUERY, constant("{{dfsp.customtimeout}}"))
-                .setHeader("Connection", constant("Close"))
+                .setHeader("Connection", constant("keep-alive"))
+
                 .marshal().json()
                 .transform(datasonnet("resource:classpath:mappings/getPartiesRequest.ds"))
                 .setBody(simple("${body.content}"))
@@ -149,7 +150,7 @@ public class PartiesRouter extends RouteBuilder {
                         "null, " +
                         "'Output Payload: ${body}')") // default logger
                 .removeHeaders("*", "X-*")
-                .setProperty("RetryStatus",simple(""))
+                .setProperty("RetryGetPartyStatus",constant(null))
                 .doCatch(SocketException.class)
                     .to("direct:getPartiesWhenSocketException")
                 .doCatch(HttpOperationFailedException.class)
@@ -184,11 +185,11 @@ public class PartiesRouter extends RouteBuilder {
         ;
 
         from("direct:getPartiesWhenSocketException")
-                .log("${exchangeProperty.RetryStatus}")
+                .log("RetryGetPartyStatus : ${exchangeProperty.RetryGetPartyStatus}")
                 .choice()
-                    .when().simple("${exchangeProperty.RetryStatus} == null")
-                        .setProperty("RetryStatus",simple("one"))
-                        .log("Connect reset and tried again")
+                    .when().simple("${exchangeProperty.RetryGetPartyStatus} == null")
+                        .setProperty("RetryGetPartyStatus",simple("one"))
+                        .log("Connection reset and tried again")
                         .setBody(simple("${exchangeProperty.downstreamRequestBody}"))
                         .to("direct:getPartiesByIdTypeIdValueIdSubValue")
                 .otherwise()
