@@ -7,6 +7,7 @@ import com.modusbox.client.model.TransferRequestInbound;
 import com.modusbox.client.model.TransferResponseInbound;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Pattern;
 
 public class TransfersApiImpl implements TransfersApi {
 
