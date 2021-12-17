@@ -104,9 +104,6 @@ public class PartiesRouter extends RouteBuilder {
                 .setHeader("Content-Type", constant("application/json"))
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setBody(constant(null))
-                .setHeader(Exchange.HTTP_QUERY, constant("{{dfsp.customtimeout}}"))
-                .setHeader("Connection", constant("keep-alive"))
-
                 .marshal().json()
                 .transform(datasonnet("resource:classpath:mappings/getPartiesRequest.ds"))
                 .setBody(simple("${body.content}"))
@@ -119,7 +116,6 @@ public class PartiesRouter extends RouteBuilder {
                         "null, " +
                         "null, " +
                         "'Request to POST {{dfsp.host}}" + PATH +", IN Payload: ${body} IN Headers: ${headers}')")
-                .log("${header.CamelHttpQuery}")
                 .toD("{{dfsp.host}}" + PATH)
                 //.marshal().json()
                 .to("bean:customJsonMessage?method=logJsonMessage(" +
