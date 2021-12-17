@@ -195,6 +195,27 @@ paths:
           $ref: '#/components/responses/500'
 
   /transfers/{transferId}:
+    get:
+      summary: Requests status relating to a transfer
+      operationId: getTransfersByTransferId
+      description: The HTTP request `GET /transfers/{transferId}` is sent to the Hub by the DFSP, and it is used to look up information regarding the given transfer, identified by `{transferId}`.
+      tags:
+        - transfers
+      parameters:
+        - $ref: '#/components/parameters/transferId'
+      responses:
+        200:
+          description: Response containing status of the requested transfer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mojaloopTransferState'
+        400:
+          $ref: '#/components/responses/400'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
     put:
       summary: Provides a notification about the success/failure of a specific transfer
       operationId: putTransfersByTransferId
