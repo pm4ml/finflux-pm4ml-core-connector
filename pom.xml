@@ -14,6 +14,7 @@
     <artifactId>finflux-pm4ml-core-connector</artifactId>
     <packaging>pom</packaging>
     <version>1.2.0</version>
+
     <name>Finflux Core Connector :: Parent</name>
 
     <properties>
@@ -39,6 +40,8 @@
     <modules>
         <module>core-connector</module>
         <module>core-connector-interface</module>
+
+
     </modules>
 
     <dependencyManagement>
@@ -121,6 +124,28 @@
                 <artifactId>cxf-rt-rs-service-description</artifactId>
                 <version>${cxf.version}</version>
             </dependency>
+
+
+
+
+
+
+
+            <!-- logging -->
+            <!-- vulnerability in log4j found, need to use only version 2.15.0 or above!!! -->
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
+                <version>2.17.0</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-core</artifactId>
+                <version>2.17.0</version>
+                <scope>runtime</scope>
+            </dependency>
+
             <dependency>
                 <groupId>org.apache.camel.springboot</groupId>
                 <artifactId>camel-servlet-starter</artifactId>
@@ -211,6 +236,7 @@
                     <!-- Need to add <inputSpec>, <apiPackage>, and <modelPackage>   -->
                     <configuration>
                         <generatorName>jaxrs-spec</generatorName>
+
                         <!--                        <generatorName>jaxrs-cxf</generatorName>-->
                         <output>${project.build.directory}/generated-sources</output>
                         <strictSpec>false</strictSpec>
