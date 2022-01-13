@@ -16,7 +16,7 @@ public class DataValidator {
         System.out.println("Constant Rounding Value:"+ roundingValue);
 
         if ((Float.parseFloat(Amount) % Short.parseShort(roundingValue)) != 0) {
-            throw new CCCustomException(ErrorCode.getErrorResponse(ErrorCode.PAYEE_LIMIT_ERROR, "Amount is invalid. Please enter the amount in multiple of 50.(e.g. 50, 100, 150, 200, etc)"));
+            throw new CCCustomException(ErrorCode.getErrorResponse(ErrorCode.ROUNDING_VALUE_ERROR, ErrorCode.ROUNDING_VALUE_ERROR.getDefaultMessage().replace("XXXX",roundingValue)));
         }
     }
 }
