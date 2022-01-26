@@ -1,3 +1,13 @@
 {
-    "mojaloopTransferState": payload.fulfil.body.transferState
+  "transferId": payload.transferId,
+  "currentState": payload.currentState,
+  "initiatedTimestamp": payload.initiatedTimestamp,
+  "direction": payload.direction,
+  "fulfil": {
+    "body": {
+      "completedTimestamp": payload.fulfil.body.completedTimestamp,
+      "transferState": payload.fulfil.body.transferState,
+      "fulfilment": payload.fulfil.body.fulfilment
+    }
+  }
 }
