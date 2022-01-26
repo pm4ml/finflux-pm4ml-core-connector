@@ -257,7 +257,7 @@ public class TransfersRouter extends RouteBuilder {
                         "'Calling Hub API, get transfers, GET {{ml-conn.outbound.host}}', " +
                         "'Tracking the request', 'Track the response', 'Input Payload: ${body}')")
                 .toD("{{ml-conn.outbound.host}}/transfers/${header.transferId}?bridgeEndpoint=true&throwExceptionOnFailure=false")
-                .unmarshal().json(JsonLibrary.Gson)
+                .unmarshal().json()
                 .to("bean:customJsonMessage?method=logJsonMessage('info', ${header.X-CorrelationId}, " +
                         "'Response from Hub API, get transfers: ${body}', " +
                         "'Tracking the response', 'Verify the response', null)")
