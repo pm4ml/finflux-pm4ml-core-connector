@@ -25,7 +25,13 @@
 <!--    <bean id="transfersRouter" class="com.modusbox.client.router.TransfersRouter" />-->
 <!--    <bean id="authRouter" class="com.modusbox.client.router.AuthRouter" />-->
     <bean id="customErrorRouter" class="com.modusbox.client.router.CustomErrorRouter" />
-    <camel:camelContext>
+
+    <bean id="http" class="org.apache.camel.component.http.HttpComponent">
+        <property name="camelContext" ref="camel"/>
+        <property name="connectionTimeToLive" value="#{systemProperties.customtimeout}"/>
+    </bean>
+
+    <camel:camelContext id="camel" xmlns="http://camel.apache.org/schema/spring" trace="false">
 <!--        <camel:propertyPlaceholder id="properties" propertiesParserRef="jasypt"/>-->
         <camel:package>com.modusbox.client.router</camel:package>
 <!--        <camel:routeBuilder ref="CoreConnectorAPI"/>-->

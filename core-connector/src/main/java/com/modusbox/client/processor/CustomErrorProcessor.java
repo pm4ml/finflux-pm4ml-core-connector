@@ -86,8 +86,15 @@ public class CustomErrorProcessor implements Processor {
                             }
 
                         } else {
-                            CheckSteps += "############### Invalid json format ############### \\r\\n";
-                            statusCode = String.valueOf(ErrorCode.MALFORMED_SYNTAX.getStatusCode());
+                            if(statusCode.equals("504"))
+                            {
+                                CheckSteps += "############### Gatway timeout ############### \\r\\n";
+                                statusCode = String.valueOf(ErrorCode.SERVER_TIMED_OUT.getStatusCode());
+                            }
+                            else {
+                                CheckSteps += "############### Invalid json format ############### \\r\\n";
+                                statusCode = String.valueOf(ErrorCode.MALFORMED_SYNTAX.getStatusCode());
+                            }
                             errorDescription = String.valueOf(e.getResponseBody());
                         }
                     }
