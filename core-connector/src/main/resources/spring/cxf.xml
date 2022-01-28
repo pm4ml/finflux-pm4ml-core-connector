@@ -28,7 +28,7 @@
 
     <bean id="http" class="org.apache.camel.component.http.HttpComponent">
         <property name="camelContext" ref="camel"/>
-        <property name="connectionTimeToLive" value="#{systemProperties.customtimeout}"/>
+        <property name="connectionTimeToLive" value="300000"/>
     </bean>
 
     <camel:camelContext id="camel" xmlns="http://camel.apache.org/schema/spring" trace="false">
