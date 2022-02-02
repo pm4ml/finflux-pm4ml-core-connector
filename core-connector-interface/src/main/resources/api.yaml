@@ -1642,28 +1642,15 @@ components:
         
     transferStatusResponse:
       type: object
-      required:
-        - transferId
-        - currentState
-        - fulfil
       properties:
         transferId:
           $ref: '#/components/schemas/mojaloopIdentifier'
-        currentState:
+        transferState:
           $ref: '#/components/schemas/transferStatus'
-        initiatedTimestamp:
+        completedTimestamp:
           $ref: '#/components/schemas/timestamp'
-        direction:
-          type: string
-        fulfil:
-          type: object
-          required:
-            - body
-          properties:
-            body:
-              $ref: '#/components/schemas/transferFulfilment'
-            headers:
-              type: object
+          description: Time and date when the transaction was completed.
+          example: "2020-05-19T08:38:08.699-04:00"
 
   responses:
     '400':
